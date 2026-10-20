@@ -53,7 +53,13 @@ function thresholdList(m){
   }).filter(record=>record.val!==null);
 }
 function svgEl(tag,attrs,text){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs||{}).forEach(([k,v])=>el.setAttribute(k,v));if(text!==undefined)el.textContent=text;return el;}
-function draw(){const svg=$('chart');svg.replaceChildren();$('tip').style.display='none';const obs=series(stageflow?.observed,metric);const forecast=series(stageflow?.forecast,metric);curves=[{name:'Observed',pts:obs,color:'#176fbc'},{name:'Forecast',pts:forecast,color:'#9950ac'}];let all=curves.flatMap(x=>x.pts);if(!all.length){fail('NOAA responded but this gauge has no usable '+(metric==='primary'?'stage':'flow')+' time-series values in the expected API fields. Use the official gauge page to inspect available products.');return;}
+function draw(){const svg=$('chart');svg.replaceChildren();$('tip').style.display='none';const obs=series(stageflow?.observed,metric);
+// NOAA products can carry overlapping timestamps. Keep original data unchanged,
+// but display forecasts only *after* the final observed timestamp.
+const forecastRaw=series(stageflow?.forecast,metric);
+const lastObserved=obs.length?obs[obs.length-1].t:null;
+const forecast=lastObserved===null?forecastRaw:forecastRaw.filter(p=>p.t>lastObserved);
+curves=[{name:'Observed',pts:obs,color:'#176fbc'},{name:'Forecast',pts:forecast,color:'#9950ac'}];let all=curves.flatMap(x=>x.pts);if(!all.length){fail('NOAA responded but this gauge has no usable '+(metric==='primary'?'stage':'flow')+' time-series values in the expected API fields. Use the official gauge page to inspect available products.');return;}
 const minTime=Math.min(...all.map(p=>p.t)),maxTime=Math.max(...all.map(p=>p.t));
 const present=obs.length?Math.max(...obs.map(p=>p.t)):minTime;
 const viewStart=days===0?minTime:Math.max(minTime,present-days*86400000);
@@ -83,7 +89,7 @@ for(const h of th){const y=Y(h.val);if(y<top||y>bottom)continue;svg.append(svgEl
 for(const c of curves){const points=c.pts.filter(p=>p.t>=x0&&p.t<=x1);if(!points.length)continue;svg.append(svgEl('polyline',{points:points.map(p=>X(p.t).toFixed(2)+','+Y(p.v).toFixed(2)).join(' '),fill:'none',stroke:c.color,'stroke-width':2.8,'stroke-linecap':'round','stroke-linejoin':'round'}));}
 svg.append(svgEl('text',{x:left,y:17,fill:'#314f63','font-size':13,'font-weight':'bold'},metric==='primary'?'Stage':'Flow'));
 svg.onpointermove=e=>{const rect=svg.getBoundingClientRect(),t=x0+((e.clientX-rect.left)/rect.width*1000-left)/(right-left)*(x1-x0);let nearest=null;for(const c of curves)for(const p of c.pts){const diff=Math.abs(p.t-t);if(!nearest||diff<nearest.diff)nearest={...p,name:c.name,diff};}if(!nearest)return;const tip=$('tip');tip.textContent=nearest.name+' · '+new Date(nearest.t).toLocaleString()+' · '+nearest.v;tip.style.display='block';tip.style.left=Math.min(e.clientX-rect.left+12,rect.width-215)+'px';tip.style.top=Math.max(5,e.clientY-rect.top-45)+'px';};svg.onpointerleave=()=>$('tip').style.display='none';
-$('pending').style.display='none';svg.style.display='block';$('status').textContent=obs.length+' observed points · '+forecast.length+' forecast points · '+(th.length?'Flood thresholds shown':'No flood thresholds shown');}
+$('pending').style.display='none';svg.style.display='block';$('status').textContent=obs.length+' observed points · '+forecast.length+' future forecast points'+(forecastRaw.length!==forecast.length?' (overlapping forecast times hidden)':'')+' · '+(th.length?'Flood thresholds shown':'No flood thresholds shown');}
 async function refresh(){ $('err').style.display='none';$('status').textContent='Requesting NOAA NWPS data…';$('chart').style.display='none';$('pending').style.display='grid';$('pending').textContent='Loading live hydrograph…';try{const [gaugeInfo,observations,forecastResult]=await Promise.all([
   getJSON(base),
   getJSON(base+'/stageflow/observed'),
