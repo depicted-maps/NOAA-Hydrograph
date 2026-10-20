@@ -58,7 +58,10 @@ function draw(){const svg=$('chart');svg.replaceChildren();$('tip').style.displa
 // but display forecasts only *after* the final observed timestamp.
 const forecastRaw=series(stageflow?.forecast,metric);
 const lastObserved=obs.length?obs[obs.length-1].t:null;
+// Single handoff: no forecast point at or before the final observed timestamp.
+// This is DISPLAY-ONLY: it never changes NOAA source data.
 const forecast=lastObserved===null?forecastRaw:forecastRaw.filter(p=>p.t>lastObserved);
+if(lastObserved!==null&&forecast.some(p=>p.t<=lastObserved))throw new Error('Forecast/observation handoff invariant failed');
 curves=[{name:'Observed',pts:obs,color:'#176fbc'},{name:'Forecast',pts:forecast,color:'#9950ac'}];let all=curves.flatMap(x=>x.pts);if(!all.length){fail('NOAA responded but this gauge has no usable '+(metric==='primary'?'stage':'flow')+' time-series values in the expected API fields. Use the official gauge page to inspect available products.');return;}
 const minTime=Math.min(...all.map(p=>p.t)),maxTime=Math.max(...all.map(p=>p.t));
 const present=obs.length?Math.max(...obs.map(p=>p.t)):minTime;
@@ -86,10 +89,23 @@ for(let i=0;i<=5;i++){const y=top+i*(bottom-top)/5,v=hi-(hi-lo)*i/5;svg.append(s
 for(let i=0;i<=6;i++){const t=x0+i*(x1-x0)/6,x=X(t);svg.append(svgEl('line',{x1:x,x2:x,y1:top,y2:bottom,stroke:'#edf1f5'}));svg.append(svgEl('text',{x,y:bottom+24,'text-anchor':'middle',fill:'#536c7c','font-size':11},new Date(t).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric'})));}
 if(th.length){const ordered=[...th].filter(t=>t.val>=lo&&t.val<=hi).sort((a,b)=>a.val-b.val);let lower=bottom;for(const band of ordered){const y=Math.max(top,Math.min(bottom,Y(band.val)));svg.append(svgEl('rect',{x:left,y:y,width:right-left,height:Math.max(0,lower-y),fill:band.color,'fill-opacity':'.09'}));lower=y;}}
 for(const h of th){const y=Y(h.val);if(y<top||y>bottom)continue;svg.append(svgEl('line' ,{x1:left,x2:right,y1:y,y2:y,stroke:h.color,'stroke-width':1.8,'stroke-dasharray':'7 5'}));svg.append(svgEl('text',{x:right-6,y:y-5,'text-anchor':'end','font-size':12,fill:h.color},h.title+' '+h.val));}
-for(const c of curves){const points=c.pts.filter(p=>p.t>=x0&&p.t<=x1);if(!points.length)continue;svg.append(svgEl('polyline',{points:points.map(p=>X(p.t).toFixed(2)+','+Y(p.v).toFixed(2)).join(' '),fill:'none',stroke:c.color,'stroke-width':2.8,'stroke-linecap':'round','stroke-linejoin':'round'}));}
+// Final plot-level safeguard: segment paths can never cross the handoff timestamp.
+for(const c of curves){
+  const points=c.pts.filter(p=>p.t>=x0&&p.t<=x1&&(
+    lastObserved===null || (c.name==='Forecast'?p.t>lastObserved:p.t<=lastObserved)
+  ));
+  if(!points.length)continue;
+  svg.append(svgEl('polyline',{points:points.map(p=>X(p.t).toFixed(2)+','+Y(p.v).toFixed(2)).join(' '),fill:'none',stroke:c.color,'stroke-width':2.8,'stroke-linecap':'round','stroke-linejoin':'round'}));
+}
+// Make the observed-to-forecast boundary explicit, but only when both are visible.
+if(lastObserved!==null&&forecast.some(p=>p.t>x0&&p.t<=x1)&&obs.some(p=>p.t>=x0&&p.t<=x1)&&lastObserved>=x0&&lastObserved<=x1){
+  const boundary=X(lastObserved);
+  svg.append(svgEl('line',{x1:boundary,x2:boundary,y1:top,y2:bottom,stroke:'#65798b','stroke-width':1.5,'stroke-dasharray':'4 5'}));
+  svg.append(svgEl('text',{x:Math.min(boundary+7,right-115),y:top+13,'font-size':11,fill:'#415466'},'Last observation'));
+}
 svg.append(svgEl('text',{x:left,y:17,fill:'#314f63','font-size':13,'font-weight':'bold'},metric==='primary'?'Stage':'Flow'));
 svg.onpointermove=e=>{const rect=svg.getBoundingClientRect(),t=x0+((e.clientX-rect.left)/rect.width*1000-left)/(right-left)*(x1-x0);let nearest=null;for(const c of curves)for(const p of c.pts){const diff=Math.abs(p.t-t);if(!nearest||diff<nearest.diff)nearest={...p,name:c.name,diff};}if(!nearest)return;const tip=$('tip');tip.textContent=nearest.name+' · '+new Date(nearest.t).toLocaleString()+' · '+nearest.v;tip.style.display='block';tip.style.left=Math.min(e.clientX-rect.left+12,rect.width-215)+'px';tip.style.top=Math.max(5,e.clientY-rect.top-45)+'px';};svg.onpointerleave=()=>$('tip').style.display='none';
-$('pending').style.display='none';svg.style.display='block';$('status').textContent=obs.length+' observed points · '+forecast.length+' future forecast points'+(forecastRaw.length!==forecast.length?' (overlapping forecast times hidden)':'')+' · '+(th.length?'Flood thresholds shown':'No flood thresholds shown');}
+$('pending').style.display='none';svg.style.display='block';$('status').textContent='v1.00.8 · '+obs.length+' observed points · '+forecast.length+' future forecast points'+(forecastRaw.length!==forecast.length?' (overlapping forecast times hidden)':'')+' · '+(th.length?'Flood thresholds shown':'No flood thresholds shown');}
 async function refresh(){ $('err').style.display='none';$('status').textContent='Requesting NOAA NWPS data…';$('chart').style.display='none';$('pending').style.display='grid';$('pending').textContent='Loading live hydrograph…';try{const [gaugeInfo,observations,forecastResult]=await Promise.all([
   getJSON(base),
   getJSON(base+'/stageflow/observed'),
