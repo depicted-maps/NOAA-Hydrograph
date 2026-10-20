@@ -1,0 +1,47 @@
+
+:root{font-family:Arial,Helvetica,sans-serif;color:#17324a;background:#e9eff5}*{box-sizing:border-box}body{margin:0;padding:12px}.panel{max-width:1100px;margin:auto;background:white;border:1px solid #d2dfe9;border-radius:10px;overflow:hidden;box-shadow:0 3px 18px #1a45601a}.header{background:#07345a;color:white;padding:13px 18px;display:flex;align-items:center;gap:14px}.seal{width:56px;height:56px;border:2px solid white;border-radius:50%;display:grid;place-items:center;background:#087aa3;font-weight:bold;font-size:14px;line-height:1.1;text-align:center}.identity{flex:1}.identity small{display:block;color:#d5e9f8;margin-top:5px}.tag{font-size:11px;background:#265577;padding:6px 9px;border-radius:4px}.main{padding:16px}.station{font-weight:700;font-size:19px;margin-bottom:5px}.sub{font-size:12px;color:#556b7d}.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0 10px}button,select{background:white;border:1px solid #b3c7d4;border-radius:5px;color:#153955;padding:7px 10px;cursor:pointer}button.active{background:#0b4b76;color:white}.controls a{margin-left:auto}.chartwrap{position:relative;overflow:hidden}.chart{width:100%;height:auto;display:block;touch-action:pan-y}.legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:#4b6479}.lineKey{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:5px}.keyObs{background:#176fbc}.keyFcst{background:#9950ac}.error{padding:11px;background:#fff4df;border:1px solid #e6c47b;border-radius:5px;font-size:13px;margin:10px 0;display:none}.footer{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;border-top:1px solid #e3eaf0;padding:10px 16px;font-size:11px;color:#657787}.footer a{color:#0b568a}.tooltip{position:absolute;display:none;pointer-events:none;background:#17324a;color:white;font-size:12px;padding:7px;border-radius:4px;box-shadow:0 2px 7px #0004;white-space:nowrap}.pending{height:330px;display:grid;place-items:center;color:#526b7d}.checkbox{display:flex;align-items:center;gap:5px;font-size:13px}.checkbox input{accent-color:#0b4b76}.status{font-size:12px;color:#526b7d;margin-bottom:6px}a{color:#0a5d95}@media(max-width:650px){body{padding:0}.panel{border-radius:0}.tag{display:none}.station{font-size:16px}.header{padding:10px}.main{padding:11px}}
+
+/* Navy station banner mirrors the visual hierarchy of the native USGS banner. */
+.header{background:#062749;padding:10px 16px;min-height:92px}.seal{width:65px;height:65px;flex:none;background:transparent;border:0}.seal img{width:65px;height:65px;object-fit:contain}.identity b{font-size:clamp(16px,2vw,23px);font-weight:600}.identity small{font-size:13px;color:#fff}.tag{white-space:nowrap}.banner-nav{background:#062749;border-top:1px solid #5b7b96;display:flex;gap:0;justify-content:space-between;flex-wrap:wrap;padding:9px 14px;color:white;font-size:13px}.nav-side{display:flex;align-items:center;flex-wrap:wrap}.banner-nav a,.banner-nav button{border:0;background:transparent;color:white;font-size:13px;cursor:pointer;text-decoration:none;border-radius:0;padding:4px 11px;border-right:1px solid #52708a}.banner-nav .nav-side>*:last-child{border-right:0}.banner-nav a:hover,.banner-nav button:hover{text-decoration:underline}.mapbox{display:none;margin:12px 16px 0;border:1px solid #d2dfe9}.mapbox iframe{width:100%;height:220px;border:0}.tag{font-size:11px}.hidden-chart{display:none}.controls{margin-top:3px}@media(max-width:650px){.header{min-height:76px}.seal,.seal img{width:50px;height:50px}.banner-nav{gap:5px}}
+
+/* v1.00.2: Reference-matched 74px + 37px two-row banner. */
+html,body { min-height:100%; }
+body { margin:0; padding:0; background:#fff; }
+.panel { max-width:none; width:100%; min-height:100vh; margin:0; border:0; border-radius:0; box-shadow:none; display:flex; flex-direction:column; }
+.header { height:74px; min-height:74px; padding:7px 16px; gap:16px; background:#00264a; flex:none; }
+.seal,.seal img { width:56px; height:56px; flex:none; }
+.identity b { font-size:20px; font-weight:500; }
+.identity small { font-size:16px; line-height:1.3; margin-top:3px; color:#fff; }
+.tag { display:none; }
+.banner-nav { height:37px; min-height:37px; padding:0 6px; align-items:center; flex-wrap:nowrap; border-top:1px solid #55718a; background:#00264a; flex:none; }
+.banner-nav a,.banner-nav button { font-size:12px; padding:0 12px; line-height:17px; }
+.main { flex:1; display:flex; flex-direction:column; padding:8px 16px 10px; min-height:480px; }
+.main > .station,.main > .sub { display:none; }
+.controls { margin:5px 0 7px; }
+.chartwrap { flex:1; min-height:320px; display:flex; position:relative; }
+.chart { width:100%; height:auto; align-self:stretch; min-height:320px; }
+.pending { width:100%; min-height:320px; }
+.legend { padding:7px 0 9px; }
+.footer { margin-top:auto; }
+@media(max-width:650px){.header{height:74px;min-height:74px;padding:7px 10px;gap:10px}.identity b{font-size:15px}.identity small{font-size:12px}.seal,.seal img{width:50px;height:50px}.banner-nav{height:auto;min-height:37px;flex-wrap:wrap;padding:5px;gap:6px}.main{padding:8px}}
+
+/* v1.00.4 compact native-inspired hydrograph layout; live-data only */
+.header {background:#00264a}.banner-nav{background:#00264a}
+.station-strip{display:flex;justify-content:center;text-align:center;gap:8px;align-items:center;flex-direction:column;margin:8px 0 5px;font-size:13px}
+.station-strip strong{font-size:16px}.station-strip small{color:#657080}
+.mode-tabs{display:flex;align-items:center;gap:0;border-bottom:1px solid #dce2ea; margin:0 0 7px}
+.mode-tabs button{border-radius:0;border:1px solid #dce2ea;margin-right:4px;border-bottom:none;font-size:12px;background:#fff}
+.mode-tabs button.active{border-bottom:2px solid #fff;font-weight:bold}
+.controls{align-items:center}.controls .checkbox{font-size:12px}
+.timeline-wrap{border-top:1px solid #dce2ea;margin-top:2px;padding:7px 4px 4px}
+.timeline-header{display:flex;justify-content:space-between;font-size:11px;color:#586d7a;margin-bottom:5px}
+.timeline-controls{display:flex;align-items:center;gap:8px}.timeline-controls input[type=range]{width:50%;accent-color:#6595c4;cursor:pointer}
+.chartwrap{min-height:350px}.chart{height:100%;min-height:350px}
+.zoom-tools{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin:7px 0}.zoom-tools button{padding:4px 10px;font-size:12px}
+.notice{color:#657080;font-size:11px;margin:5px 0}
+@media(max-width:700px){.main{min-height:480px}.identity b{font-size:15px}.controls{gap:5px}.timeline-header{flex-wrap:wrap}}
+
+/* Compact transparent NOAA / NWS paired emblem within the 74px top banner */
+.seal { width:110px; height:56px; min-width:110px; border:0; border-radius:0; background:transparent; }
+.seal img { width:110px; height:55px; object-fit:contain; }
+@media(max-width:650px){ .seal { width:78px; height:42px; min-width:78px; } .seal img { width:78px; height:40px; } }
