@@ -1,5 +1,5 @@
 "use strict";
-// v1.01.0: independent Apache ECharts implementation. No NOAA site code copied.
+// v1.01.2: independent Apache ECharts implementation. No NOAA site code copied.
 const $=id=>document.getElementById(id);
 const query=new URLSearchParams(location.search);const raw=(query.get('station')||'NWPR1').trim().toUpperCase();
 const id=raw.replace(/^NWS(?=[A-Z0-9]{5}$)/,'');const valid=/^[A-Z0-9]{5,8}$/.test(id);
@@ -22,9 +22,19 @@ function chartData(){fullObs=points(observed);const forecastRaw=points(predicted
  if(lastCutoff!=null&&fullForecast.some(p=>p[0]<=lastCutoff))throw Error('Observed/forecast overlap invariant');
  return [fullObs,fullForecast];}
 function limits(data,cat){let vals=data.flatMap(arr=>arr.map(p=>p[1]));if($('scaleFlood').checked)vals.push(...cat.map(c=>c.value));const low=Math.min(...vals),high=Math.max(...vals),span=Math.max(.1,high-low);return [low-span*.1,high+span*.1];}
-function setupZoomWindow(){let all=fullObs.concat(fullForecast);const first=all[0]?.[0],last=all.at(-1)?.[0];if(first==null)return;
- if(zoomWindow===null){let end=last;let start=Math.max(first,(lastCutoff??last)-2*864e5);zoomWindow=[start,end];}
- zoomWindow=[Math.max(first,zoomWindow[0]),Math.min(last,zoomWindow[1])];if(zoomWindow[0]>=zoomWindow[1])zoomWindow=[first,last];}
+function bounds(){const data=fullObs.concat(fullForecast);if(!data.length)return null;return [Math.min(...data.map(p=>p[0])),Math.max(...data.map(p=>p[0]))];}
+function clampWindow(start,end){const b=bounds();if(!b)return null;const [lo,hi]=b;const total=Math.max(hi-lo,3600000);let width=Math.min(Math.max(end-start,3600000),total);start=Math.max(lo,Math.min(start,hi-width));return [start,start+width];}
+function setupZoomWindow(){const b=bounds();if(!b)return;
+ if(zoomWindow===null){const [low,high]=b;const cutoff=lastCutoff??high;
+ // Native-inspired starting view: observed history on left and future forecast on right.
+ const start=Math.max(low,cutoff-3*864e5),end=Math.min(high,cutoff+3*864e5);
+ zoomWindow=clampWindow(start,end>start?end:high);
+ }else{zoomWindow=clampWindow(...zoomWindow);}}
+function setTimeWindow(start,end){if(!chart)return;const next=clampWindow(start,end);if(!next)return;zoomWindow=next;
+ // Update the live ECharts axis range without replacing the chart instance or resetting navigator state.
+ chart.dispatchAction({type:'dataZoom',dataZoomId:'navigator',startValue:next[0],endValue:next[1]});
+ chart.dispatchAction({type:'dataZoom',dataZoomId:'wheel',startValue:next[0],endValue:next[1]});
+}
 function render(preserve=true){if(!window.echarts){warn('The chart library did not load. Check the internet connection and JavaScript CDN.');return;}
  const [obs,fc]=chartData();if(!obs.length&&!fc.length){warn('NOAA returned no usable observed or forecast stage data for this station.');return;}
  const all=obs.concat(fc);const minX=Math.min(...all.map(p=>p[0])),maxX=Math.max(...all.map(p=>p[0]));const cats=categories(meta);
@@ -35,11 +45,12 @@ function render(preserve=true){if(!window.echarts){warn('The chart library did n
  const pieces=[];if($('showFlood').checked){for(let i=0;i<cats.length;i++){pieces.push([{yAxis:cats[i].value,itemStyle:{color:cats[i].color,opacity:.4}},{yAxis:i+1<cats.length?cats[i+1].value:yMax}]);}}
  const opt={animation:false,backgroundColor:'#fff',grid:[{left:74,right:32,top:45,bottom:150}],legend:{top:4,data:['Observed','Forecast'],selectedMode:false,textStyle:{fontSize:13}},tooltip:{trigger:'axis',axisPointer:{type:'cross'},formatter:xs=>xs.map(x=>x.marker+' '+x.seriesName+': '+Number(x.value[1]).toFixed(2)+' ft').join('<br>')+'<br>'+fmtTime(xs[0].value[0])},
  xAxis:[{type:'time',axisLabel:{formatter:v=>new Date(v).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric'})},axisLine:{lineStyle:{color:'#8294a5'}},axisTick:{show:true}}],yAxis:[{type:'value',name:'Tide / River Stage (ft)',nameLocation:'middle',nameGap:50,min:yMin,max:yMax,splitLine:{lineStyle:{color:'#d9e1e7'}}}],
- dataZoom:[{id:'wheel',type:'inside',xAxisIndex:0,filterMode:'none',zoomOnMouseWheel:true,moveOnMouseWheel:'shift',moveOnMouseMove:false,minValueSpan:3600000},{id:'navigator',type:'slider',xAxisIndex:0,filterMode:'none',bottom:38,height:58,showDataShadow:true,showDetail:true,handleSize:20,brushSelect:false,startValue:zoomWindow[0],endValue:zoomWindow[1]}],
+ dataZoom:[{id:'wheel',type:'inside',xAxisIndex:0,filterMode:'none',zoomOnMouseWheel:false,moveOnMouseWheel:true,moveOnMouseMove:false,minValueSpan:3600000,startValue:zoomWindow[0],endValue:zoomWindow[1]},{id:'navigator',type:'slider',xAxisIndex:0,filterMode:'none',bottom:38,height:58,showDataShadow:true,showDetail:true,handleSize:20,brushSelect:false,startValue:zoomWindow[0],endValue:zoomWindow[1]}],
  toolbox:{right:24,top:0,feature:{restore:{show:true},saveAsImage:{show:true,title:'Save hydrograph as PNG',pixelRatio:2}}},
  series:[{name:'Observed',type:'line',data:obs,showSymbol:false,symbol:'circle',lineStyle:{color:'#1766b0',width:2.8},itemStyle:{color:'#1766b0'},connectNulls:false,markLine:{silent:true,symbol:'none',data:markLines.concat(marks.map(row=>row[0]))},markArea:{silent:true,data:pieces}},{name:'Forecast',type:'line',data:fc,showSymbol:false,lineStyle:{color:'#8c40a8',width:2.5},itemStyle:{color:'#8c40a8'},connectNulls:false}]};
  chart.setOption(opt,true);
- chart.off('datazoom');chart.on('datazoom',()=>{let dz=chart.getOption()?.dataZoom?.[1];if(!dz)return;let start=dz.startValue,end=dz.endValue;if(Number.isFinite(Number(start))&&Number.isFinite(Number(end))){zoomWindow=[Number(start),Number(end)];}});
+ chart.off('datazoom');chart.on('datazoom',()=>{const axis=chart.getModel()?.getComponent('xAxis',0)?.axis;
+ if(!axis)return;const ext=axis.scale.getExtent();if(ext.length===2&&ext.every(Number.isFinite)&&ext[1]>ext[0])zoomWindow=[...ext];});
  $('handoff').textContent=lastCutoff==null?'No observations available':('Last observation: '+fmtTime(lastCutoff)+(fc.length?' · First forecast: '+fmtTime(fc[0][0]):' · No forecast available'));
  $('seriesCount').textContent=obs.length+' observations / '+fc.length+' future forecast values';
 }
@@ -50,7 +61,13 @@ async function reload(){const token=++retrieval;clearWarn();$('loaded').textCont
  $('stationInfo').textContent='NWSLI '+id+' · NOAA official forecast data (if provided) · Independent chart rendering · Datum/units require station verification';
  $('loaded').textContent='Retrieved '+fmtTime(Date.now());render(true);
  }catch(e){warn('Cannot load verified NOAA gauge data: '+e.message+'. Use the official NOAA link for current conditions.');$('loaded').textContent='Live NOAA data unavailable';}}
-for(const b of document.querySelectorAll('[data-zoom]'))b.addEventListener('click',()=>{if(!fullObs.length&&!fullForecast.length)return;let a=fullObs.concat(fullForecast).map(p=>p[0]),low=Math.min(...a),high=Math.max(...a);let days=b.dataset.zoom==='all'?null:Number(b.dataset.zoom);zoomWindow=days==null?[low,high]:[Math.max(low,(lastCutoff??high)-days*864e5),high];render(true);});
+for(const b of document.querySelectorAll('[data-zoom]'))b.addEventListener('click',()=>{const limits=bounds();if(!limits||!chart)return;
+ const [low,high]=limits;const value=b.dataset.zoom;
+ if(value==='all'){setTimeWindow(low,high);return;}
+ const duration=Number(value)*864e5;if(!Number.isFinite(duration)||duration<=0)return;
+ // Anchor presets at latest observed value when a forecast exists; show observations and the nearby forecast.
+ const center=lastCutoff??high;setTimeWindow(center-duration/2,center+duration/2);
+});
 $('scaleFlood').addEventListener('change',()=>render(true));$('showFlood').addEventListener('change',()=>render(true));$('refresh').addEventListener('click',reload);
 $('print').addEventListener('click',()=>window.print());$('downloadCSV').addEventListener('click',()=>{if(!fullObs.length&&!fullForecast.length)return;let rows=[['type','timestamp_utc','stage_ft'],...fullObs.map(p=>['observed',new Date(p[0]).toISOString(),p[1]]),...fullForecast.map(p=>['forecast',new Date(p[0]).toISOString(),p[1]])];let blob=new Blob([rows.map(r=>r.join(',')).join('\r\n')],{type:'text/csv'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=id+'_hydrograph.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);});
 setInterval(()=>{if($('autoRefresh').checked&&!document.hidden)reload();},300000);window.addEventListener('resize',()=>chart?.resize());
