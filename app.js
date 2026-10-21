@@ -1,5 +1,5 @@
 "use strict";
-// v1.01.3: independent Apache ECharts implementation. No NOAA site code copied.
+// v1.01.4: independent Apache ECharts implementation. No NOAA site code copied.
 const $=id=>document.getElementById(id);
 const query=new URLSearchParams(location.search);const raw=(query.get('station')||'NWPR1').trim().toUpperCase();
 const id=raw.replace(/^NWS(?=[A-Z0-9]{5}$)/,'');const valid=/^[A-Z0-9]{5,8}$/.test(id);
