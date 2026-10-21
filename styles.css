@@ -2,3 +2,6 @@
 
 /* Data-product watermark: sourced official NOAA forecast, independently rendered chart. */
 .chart-container{position:relative;isolation:isolate} .official-watermark{position:absolute;z-index:2;pointer-events:none;top:17%;left:29%;width:42%;height:54%;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:.075;user-select:none;overflow:hidden}.official-watermark img{width:min(52%,210px);max-height:42%;object-fit:contain}.official-watermark span{text-align:center;font-size:clamp(22px,3.1vw,48px);font-weight:800;font-style:italic;line-height:1.1;color:#18456e} @media(max-width:650px){.official-watermark{left:22%;width:56%;top:19%;height:44%}.official-watermark span{font-size:22px}}
+
+/* v1.01.2: one NOAA emblem in banner and centered decorative watermark */
+.masthead img{width:68px;height:68px;object-fit:contain}.official-watermark{left:29%;width:42%;top:17%;height:54%}.official-watermark img{width:min(52%,210px);max-height:42%;object-fit:contain}
