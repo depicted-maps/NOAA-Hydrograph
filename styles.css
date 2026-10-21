@@ -8,3 +8,12 @@
 .forecast-watermark span{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:clamp(23px,3.4vw,57px);font-weight:800;font-style:italic;line-height:1.14;white-space:nowrap;text-align:center;color:rgba(55,61,73,.17)}
 .masthead img{width:68px;height:68px;object-fit:contain}
 @media(max-width:650px){.forecast-watermark span{font-size:clamp(18px,5vw,30px)}}
+
+/* v1.01.4: responsive, edge-to-edge plotting and plot-fixed NOAA emblem. */
+html,body{width:100%;min-width:0;overflow-x:hidden}
+.shell{max-width:none;width:100%;margin:0;box-shadow:none;min-width:0}
+.chart-container{width:100%;max-width:none;min-width:0;overflow:hidden}
+#chart{width:100%;height:clamp(450px,69vh,900px);min-width:0}
+.noaa-plot-watermark{z-index:4;overflow:visible}
+.noaa-plot-watermark img{width:100%;height:100%;display:block;object-fit:contain}
+@media(max-width:650px){#chart{height:max(430px,63vh)}.heading{padding-left:12px;padding-right:12px}}
