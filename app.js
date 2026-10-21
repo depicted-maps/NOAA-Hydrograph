@@ -1,5 +1,5 @@
 "use strict";
-// v1.01.2: independent Apache ECharts implementation. No NOAA site code copied.
+// v1.01.3: independent Apache ECharts implementation. No NOAA site code copied.
 const $=id=>document.getElementById(id);
 const query=new URLSearchParams(location.search);const raw=(query.get('station')||'NWPR1').trim().toUpperCase();
 const id=raw.replace(/^NWS(?=[A-Z0-9]{5}$)/,'');const valid=/^[A-Z0-9]{5,8}$/.test(id);
@@ -35,6 +35,38 @@ function setTimeWindow(start,end){if(!chart)return;const next=clampWindow(start,
  chart.dispatchAction({type:'dataZoom',dataZoomId:'navigator',startValue:next[0],endValue:next[1]});
  chart.dispatchAction({type:'dataZoom',dataZoomId:'wheel',startValue:next[0],endValue:next[1]});
 }
+// Keep the NOAA seal fixed at the plot midpoint; tie "Official Forecast" to the
+// visible intersection of the forecast time domain and the current x-axis window.
+// This only moves decoration: chart coordinates and NOAA values are never changed.
+function updateWatermarks(){
+ if(!chart)return;
+ const emblem=document.querySelector('.noaa-plot-watermark');
+ const label=$('forecastWatermark');
+ const plot=document.getElementById('chart');
+ if(!emblem||!label||!plot)return;
+ const model=chart.getModel();const grid=model?.getComponent('grid',0)?.coordinateSystem;
+ const axis=model?.getComponent('xAxis',0)?.axis;
+ if(!grid||!axis){label.style.display='none';return;}
+ const rect=grid.getRect();const extent=axis.scale.getExtent();
+ if(!extent||!extent.every(Number.isFinite)||extent[1]<=extent[0]){label.style.display='none';return;}
+ // ECharts pixels are relative to the chart element, which fills chart-container.
+ const diameter=Math.max(0,Math.min(315,rect.height*.90,rect.width*.36));
+ emblem.style.width=diameter+'px';emblem.style.height=diameter+'px';
+ emblem.style.left=(rect.x+rect.width/2-diameter/2)+'px';
+ emblem.style.top=(rect.y+rect.height/2-diameter/2)+'px';
+ if(!fullForecast.length){label.style.display='none';return;}
+ const firstFuture=fullForecast[0][0];
+ const start=Math.max(extent[0],firstFuture);const end=Math.min(extent[1],fullForecast[fullForecast.length-1][0]);
+ if(end<=start){label.style.display='none';return;}
+ const x1=chart.convertToPixel({xAxisIndex:0},start);
+ const x2=chart.convertToPixel({xAxisIndex:0},end);
+ const left=Math.max(rect.x,Math.min(x1,x2)),right=Math.min(rect.x+rect.width,Math.max(x1,x2));
+ if(!Number.isFinite(left)||!Number.isFinite(right)||right-left<8){label.style.display='none';return;}
+ label.style.display='block';label.style.left=left+'px';label.style.top=rect.y+'px';
+ label.style.width=(right-left)+'px';label.style.height=rect.height+'px';
+ // Center the wording in the *visible forecast*, not in the browser viewport.
+ label.firstElementChild.style.left='50%';
+}
 function render(preserve=true){if(!window.echarts){warn('The chart library did not load. Check the internet connection and JavaScript CDN.');return;}
  const [obs,fc]=chartData();if(!obs.length&&!fc.length){warn('NOAA returned no usable observed or forecast stage data for this station.');return;}
  const all=obs.concat(fc);const minX=Math.min(...all.map(p=>p[0])),maxX=Math.max(...all.map(p=>p[0]));const cats=categories(meta);
@@ -49,8 +81,10 @@ function render(preserve=true){if(!window.echarts){warn('The chart library did n
  toolbox:{right:24,top:0,feature:{restore:{show:true},saveAsImage:{show:true,title:'Save hydrograph as PNG',pixelRatio:2}}},
  series:[{name:'Observed',type:'line',data:obs,showSymbol:false,symbol:'circle',lineStyle:{color:'#1766b0',width:2.8},itemStyle:{color:'#1766b0'},connectNulls:false,markLine:{silent:true,symbol:'none',data:markLines.concat(marks.map(row=>row[0]))},markArea:{silent:true,data:pieces}},{name:'Forecast',type:'line',data:fc,showSymbol:false,lineStyle:{color:'#8c40a8',width:2.5},itemStyle:{color:'#8c40a8'},connectNulls:false}]};
  chart.setOption(opt,true);
+ requestAnimationFrame(updateWatermarks);
  chart.off('datazoom');chart.on('datazoom',()=>{const axis=chart.getModel()?.getComponent('xAxis',0)?.axis;
- if(!axis)return;const ext=axis.scale.getExtent();if(ext.length===2&&ext.every(Number.isFinite)&&ext[1]>ext[0])zoomWindow=[...ext];});
+ if(!axis)return;const ext=axis.scale.getExtent();if(ext.length===2&&ext.every(Number.isFinite)&&ext[1]>ext[0])zoomWindow=[...ext];requestAnimationFrame(updateWatermarks);});
+ chart.off('finished');chart.on('finished',updateWatermarks);
  $('handoff').textContent=lastCutoff==null?'No observations available':('Last observation: '+fmtTime(lastCutoff)+(fc.length?' · First forecast: '+fmtTime(fc[0][0]):' · No forecast available'));
  $('seriesCount').textContent=obs.length+' observations / '+fc.length+' future forecast values';
 }
@@ -70,5 +104,5 @@ for(const b of document.querySelectorAll('[data-zoom]'))b.addEventListener('clic
 });
 $('scaleFlood').addEventListener('change',()=>render(true));$('showFlood').addEventListener('change',()=>render(true));$('refresh').addEventListener('click',reload);
 $('print').addEventListener('click',()=>window.print());$('downloadCSV').addEventListener('click',()=>{if(!fullObs.length&&!fullForecast.length)return;let rows=[['type','timestamp_utc','stage_ft'],...fullObs.map(p=>['observed',new Date(p[0]).toISOString(),p[1]]),...fullForecast.map(p=>['forecast',new Date(p[0]).toISOString(),p[1]])];let blob=new Blob([rows.map(r=>r.join(',')).join('\r\n')],{type:'text/csv'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=id+'_hydrograph.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);});
-setInterval(()=>{if($('autoRefresh').checked&&!document.hidden)reload();},300000);window.addEventListener('resize',()=>chart?.resize());
+setInterval(()=>{if($('autoRefresh').checked&&!document.hidden)reload();},300000);window.addEventListener('resize',()=>{chart?.resize();requestAnimationFrame(updateWatermarks);});
 reload();
