@@ -1,5 +1,5 @@
 "use strict";
-// v1.00.9 candidate: independent licensed ECharts implementation. No NOAA site code copied.
+// v1.01.0: independent Apache ECharts implementation. No NOAA site code copied.
 const $=id=>document.getElementById(id);
 const query=new URLSearchParams(location.search);const raw=(query.get('station')||'NWPR1').trim().toUpperCase();
 const id=raw.replace(/^NWS(?=[A-Z0-9]{5}$)/,'');const valid=/^[A-Z0-9]{5,8}$/.test(id);
@@ -47,7 +47,7 @@ async function reload(){const token=++retrieval;clearWarn();$('loaded').textCont
  if(!valid){warn('Invalid station ID; expected 5–8 letters/digits.');return;}
  try{const [m,o,f]=await Promise.all([fetchJson(url),fetchJson(url+'/stageflow/observed'),fetchJson(url+'/stageflow/forecast').catch(e=>{console.warn('NOAA forecast unavailable:',e);return null;})]);if(token!==retrieval)return;meta=m;observed=o;predicted=f;
  $('title').textContent=m.name||'NOAA gauge '+id;$('subtitle').textContent='NOAA '+id+' · National Water Prediction Service';$('stationName').textContent=m.name||'Gauge '+id;
- $('stationInfo').textContent='NWSLI '+id+' · Stage datum / units must be verified against NOAA official station page';
+ $('stationInfo').textContent='NWSLI '+id+' · NOAA official forecast data (if provided) · Independent chart rendering · Datum/units require station verification';
  $('loaded').textContent='Retrieved '+fmtTime(Date.now());render(true);
  }catch(e){warn('Cannot load verified NOAA gauge data: '+e.message+'. Use the official NOAA link for current conditions.');$('loaded').textContent='Live NOAA data unavailable';}}
 for(const b of document.querySelectorAll('[data-zoom]'))b.addEventListener('click',()=>{if(!fullObs.length&&!fullForecast.length)return;let a=fullObs.concat(fullForecast).map(p=>p[0]),low=Math.min(...a),high=Math.max(...a);let days=b.dataset.zoom==='all'?null:Number(b.dataset.zoom);zoomWindow=days==null?[low,high]:[Math.max(low,(lastCutoff??high)-days*864e5),high];render(true);});
